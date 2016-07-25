@@ -766,12 +766,31 @@ Task("PackageZip")
         Zip(currentImageDir, File(ZIP_PACKAGE_SL), zipFiles);
     });
 
-Task("PackageMsi")
+
+Task("PackageRunnersMsi")
     .IsDependentOn("CreateImage")
     .WithCriteria(IsRunningOnWindows)
     .Does(() =>
     {
-        MSBuild("install/master/nunit.wixproj", new MSBuildSettings()
+        MSBuild("runners-msi/runners/nunit.wixproj", new MSBuildSettings()
+            .WithTarget("Rebuild")
+            .SetConfiguration(configuration)
+            .WithProperty("PackageVersion", packageVersion)
+            .WithProperty("DisplayVersion", version)
+            .WithProperty("OutDir", PACKAGE_DIR)
+            .WithProperty("InstallImage", IMAGE_DIR + "NUnit-" + packageVersion)
+            .SetMSBuildPlatform(MSBuildPlatform.x86)
+            .SetNodeReuse(false)
+        );
+    });
+
+
+Task("PackageFrameworkMsi")
+    .IsDependentOn("CreateImage")
+    .WithCriteria(IsRunningOnWindows)
+    .Does(() =>
+    {
+        MSBuild("framework-msi/framework/nunit-framework.wixproj", new MSBuildSettings()
             .WithTarget("Rebuild")
             .SetConfiguration(configuration)
             .WithProperty("PackageVersion", packageVersion)
@@ -1001,9 +1020,10 @@ Task("Package")
     .IsDependentOn("PackageEngine")
     .IsDependentOn("PackageExtensions")
     .IsDependentOn("PackageConsole")
-    // The following two package  targets include framework, engine and console components
-    .IsDependentOn("PackageZip")
-    .IsDependentOn("PackageMsi");
+    .IsDependentOn("PackageFrameworkMsi")  
+    .IsDependentOn("PackageRunnersMsi")
+    //PackageZip includes framework, engine and console components
+    .IsDependentOn("PackageZip");
 
 Task("Appveyor")
     .IsDependentOn("Build")
